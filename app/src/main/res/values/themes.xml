@@ -1,0 +1,11 @@
+<resources>
+    <style name="Theme.LayerCut" parent="Theme.Material3.Dark.NoActionBar">
+        <item name="colorPrimary">#FF2BD4C0</item>
+        <item name="colorOnPrimary">#FF00201D</item>
+        <item name="colorSecondary">#FF9C7CFF</item>
+        <item name="android:colorBackground">#FF0E0F12</item>
+        <item name="android:statusBarColor">#FF0E0F12</item>
+        <item name="android:navigationBarColor">#FF0E0F12</item>
+        <item name="android:windowBackground">@color/bg</item>
+    </style>
+</resources>

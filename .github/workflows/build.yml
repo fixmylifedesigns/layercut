@@ -1,0 +1,63 @@
+name: Build APK
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.9"
+      - name: Signing key (stable across builds)
+        shell: bash
+        run: |
+          if [ -f app/debug.keystore.b64 ]; then
+            base64 -d app/debug.keystore.b64 > app/debug.keystore
+          else
+            keytool -genkeypair -keystore app/debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+            base64 -w0 app/debug.keystore > app/debug.keystore.b64
+            git config user.name "ci"
+            git config user.email "ci@users.noreply.github.com"
+            git add app/debug.keystore.b64
+            git commit -m "Add signing key [skip ci]"
+            git push || true
+          fi
+      - name: Build
+        shell: bash
+        run: |
+          set -o pipefail
+          gradle assembleDebug --no-daemon 2>&1 | tee build.log
+      - name: Publish failure log
+        if: failure()
+        shell: bash
+        run: |
+          { echo "## errors"; grep -E "^e: |error:|What went wrong|FAILURE|Could not|Exception" -A4 build.log | head -300; echo; echo "## tail"; tail -120 build.log; } > /tmp/ci-log.txt
+          git config user.name "ci"
+          git config user.email "ci@users.noreply.github.com"
+          git checkout --orphan ci-logs
+          git rm -rf --cached . > /dev/null
+          cp /tmp/ci-log.txt ci-log.txt
+          git add -f ci-log.txt
+          git commit -m "CI log for ${GITHUB_SHA}"
+          git push -f origin ci-logs
+      - run: cp app/build/outputs/apk/debug/app-debug.apk LayerCut.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: LayerCut-apk
+          path: LayerCut.apk
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: build-${{ github.run_number }}
+          name: Build ${{ github.run_number }}
+          files: LayerCut.apk
