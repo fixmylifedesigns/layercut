@@ -11,7 +11,6 @@ import android.os.Handler
 import android.os.Looper
 import android.util.TypedValue
 import android.view.Gravity
-import android.view.SurfaceView
 import android.view.View
 import android.view.ViewGroup
 import android.view.WindowManager
@@ -23,11 +22,7 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.OptIn
 import androidx.appcompat.app.AppCompatActivity
-import androidx.media3.common.PlaybackException
-import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
-import androidx.media3.effect.MultipleInputVideoGraph
-import androidx.media3.transformer.CompositionPlayer
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.materialswitch.MaterialSwitch
@@ -45,8 +40,8 @@ class MainActivity : AppCompatActivity(), TimelineView.Listener, OverlayEditView
     private val project = Project()
     private val io = Executors.newSingleThreadExecutor()
     private val ui = Handler(Looper.getMainLooper())
-    private lateinit var player: CompositionPlayer
-    private lateinit var surface: SurfaceView
+    private lateinit var engine: PreviewEngine
+    private lateinit var canvasView: FrameLayout
     private lateinit var previewFrame: AspectFrameLayout
     private lateinit var timeline: TimelineView
     private lateinit var overlayView: OverlayEditView
@@ -62,7 +57,6 @@ class MainActivity : AppCompatActivity(), TimelineView.Listener, OverlayEditView
     private var addAsOverlay = false
     private val loadingThumbs = HashSet<String>()
     private var exporter: Exporter? = null
-    private var seekPosted = false
 
     private val picker = registerForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
         onPicked(uris)
@@ -77,37 +71,29 @@ class MainActivity : AppCompatActivity(), TimelineView.Listener, OverlayEditView
         super.onCreate(savedInstanceState)
         loadProject()
         buildUi()
-        player = CompositionPlayer.Builder(this)
-            .setVideoGraphFactory(MultipleInputVideoGraph.Factory())
-            .build()
-        player.addListener(object : Player.Listener {
-            override fun onPlayerError(error: PlaybackException) {
-                toast("Preview error: ${error.message ?: ""} ${error.cause?.message ?: ""}")
+        engine = PreviewEngine(this, canvasView).also { e ->
+            e.project = project
+            e.onTime = { t ->
+                positionMs = t
+                syncTime()
             }
-
-            override fun onIsPlayingChanged(isPlaying: Boolean) {
-                playBtn.text = if (isPlaying) "\u275A\u275A" else "\u25B6"
-                if (isPlaying) ui.post(ticker)
+            e.onPlayingChanged = { playing ->
+                playBtn.text = if (playing) "\u275A\u275A" else "\u25B6"
             }
-
-            override fun onPlaybackStateChanged(playbackState: Int) {
-                if (playbackState == Player.STATE_ENDED) playBtn.text = "\u25B6"
-            }
-        })
-        player.setVideoSurfaceView(surface)
+        }
         refreshAll()
         rebuildPreview()
     }
 
     override fun onStop() {
         super.onStop()
-        if (::player.isInitialized) player.pause()
+        if (::engine.isInitialized) engine.pause()
     }
 
     override fun onDestroy() {
         super.onDestroy()
         exporter?.cancel()
-        if (::player.isInitialized) player.release()
+        if (::engine.isInitialized) engine.release()
         io.shutdown()
     }
 
@@ -171,10 +157,10 @@ class MainActivity : AppCompatActivity(), TimelineView.Listener, OverlayEditView
         })
         root.addView(top)
 
-        val previewBox = FrameLayout(this).apply { setBackgroundColor(Color.BLACK) }
+        val previewBox = FrameLayout(this).apply { setBackgroundColor(Color.parseColor("#08090B")) }
         previewFrame = AspectFrameLayout(this).apply { aspect = project.aspectRatio() }
-        surface = SurfaceView(this)
-        previewFrame.addView(surface, FrameLayout.LayoutParams(match, match))
+        canvasView = FrameLayout(this)
+        previewFrame.addView(canvasView, FrameLayout.LayoutParams(match, match))
         overlayView = OverlayEditView(this).also { it.project = project; it.listener = this }
         previewFrame.addView(overlayView, FrameLayout.LayoutParams(match, match))
         previewBox.addView(previewFrame, FrameLayout.LayoutParams(wrap, wrap, Gravity.CENTER))
@@ -274,15 +260,6 @@ class MainActivity : AppCompatActivity(), TimelineView.Listener, OverlayEditView
         updateTimeText()
     }
 
-    private val ticker = object : Runnable {
-        override fun run() {
-            if (!player.isPlaying) return
-            positionMs = player.currentPosition
-            syncTime()
-            ui.postDelayed(this, 33)
-        }
-    }
-
     private fun loadThumbs() {
         for (c in project.main + project.overlays) {
             if (timeline.thumbs.containsKey(c.id) || loadingThumbs.contains(c.id)) continue
@@ -362,61 +339,32 @@ class MainActivity : AppCompatActivity(), TimelineView.Listener, OverlayEditView
 
     private fun schedulePreview() {
         ui.removeCallbacks(previewRunnable)
-        ui.postDelayed(previewRunnable, 120)
+        ui.postDelayed(previewRunnable, 60)
     }
 
     private fun rebuildPreview() {
-        val total = project.totalDurationMs()
-        if (total <= 0L) {
-            player.stop()
-            return
-        }
-        val (w, h) = project.canvasSize(540)
-        val comp = try {
-            CompositionFactory.build(project, w, h)
-        } catch (e: Exception) {
-            toast("Preview failed: ${e.message}")
-            null
-        } ?: return
-        try {
-            player.setComposition(comp, positionMs.coerceIn(0L, total - 1))
-            if (player.playbackState == Player.STATE_IDLE) player.prepare()
-        } catch (e: Exception) {
-            toast("Preview failed: ${e.message}")
-        }
+        engine.rebuild()
+        engine.seekTo(positionMs)
     }
 
     private fun togglePlay() {
-        val total = project.totalDurationMs()
-        if (total <= 0L) return
-        if (player.isPlaying) {
-            player.pause()
+        if (project.totalDurationMs() <= 0L) return
+        if (engine.isPlaying) {
+            engine.pause()
         } else {
-            if (player.playbackState == Player.STATE_IDLE) rebuildPreview()
-            if (player.playbackState == Player.STATE_ENDED || positionMs >= total - 50) {
-                positionMs = 0L
-                player.seekTo(0L)
-            }
-            player.play()
+            engine.seekTo(positionMs)
+            engine.play()
         }
-    }
-
-    private val seekRunnable = Runnable {
-        seekPosted = false
-        if (project.totalDurationMs() > 0) player.seekTo(positionMs)
     }
 
     // ------------------------------------------------------------ listeners
 
     override fun onScrub(ms: Long) {
-        if (player.isPlaying) player.pause()
+        if (engine.isPlaying) engine.pause()
         positionMs = ms
         overlayView.timeMs = ms
         updateTimeText()
-        if (!seekPosted) {
-            seekPosted = true
-            ui.postDelayed(seekRunnable, 60)
-        }
+        engine.seekTo(ms)
     }
 
     override fun onSelect(id: String?) = select(id)
@@ -424,6 +372,8 @@ class MainActivity : AppCompatActivity(), TimelineView.Listener, OverlayEditView
     override fun onEditBegin() = snapshot()
 
     override fun onEdited() = commit()
+
+    override fun onLiveChange() = engine.refreshLayout()
 
     // ------------------------------------------------------------ media import
 
@@ -577,6 +527,10 @@ class MainActivity : AppCompatActivity(), TimelineView.Listener, OverlayEditView
         box.addView(label)
         box.addView(slider)
         box.addView(mute)
+        box.addView(TextView(this).apply {
+            text = "Preview plays up to 100%. Boosts above 100% are applied in the export."
+            textSize = 12f; setTextColor(Color.parseColor("#8A8F9B"))
+        })
         MaterialAlertDialogBuilder(this)
             .setTitle("Clip volume")
             .setView(box)
@@ -707,7 +661,8 @@ class MainActivity : AppCompatActivity(), TimelineView.Listener, OverlayEditView
                         .setMessage(
                             "\u2022 Drag the timeline to scrub, pinch it to zoom.\n" +
                                 "\u2022 Tap a clip to select it; drag its white edges to trim.\n" +
-                                "\u2022 Long-press an overlay in the timeline and drag to change when it appears.\n" +
+                                "\u2022 Long-press any clip and drag it to rearrange: along the main row to reorder, " +
+                                "up into the layer rows to make it an overlay, or down onto the main row to make it a main clip.\n" +
                                 "\u2022 On the preview, drag an overlay to move it, pinch or drag its corner to resize.\n" +
                                 "\u2022 Split cuts the selected clip at the playhead."
                         )
@@ -733,8 +688,7 @@ class MainActivity : AppCompatActivity(), TimelineView.Listener, OverlayEditView
     }
 
     private fun startExport(shortSide: Int) {
-        player.pause()
-        player.stop()
+        engine.releasePlayers()
         val (w, h) = project.canvasSize(shortSide)
         val comp = try { CompositionFactory.build(project, w, h) } catch (e: Exception) { null }
         if (comp == null) { toast("Nothing to export"); rebuildPreview(); return }
@@ -774,36 +728,43 @@ class MainActivity : AppCompatActivity(), TimelineView.Listener, OverlayEditView
             }
         }
 
-        ex.start(
-            comp, out, bitrate,
-            onDone = { f ->
-                exporter = null
-                label.text = "Saving to gallery\u2026"
-                io.execute {
-                    val uri = Exporter.saveToGallery(this, f)
-                    f.delete()
-                    ui.post {
-                        dlg.dismiss()
-                        window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-                        rebuildPreview()
-                        if (uri == null) toast("Export finished but saving to the gallery failed") else doneDialog(uri)
+        try {
+            ex.start(
+                comp, out, bitrate,
+                onDone = { f ->
+                    exporter = null
+                    label.text = "Saving to gallery\u2026"
+                    io.execute {
+                        val uri = Exporter.saveToGallery(this, f)
+                        f.delete()
+                        ui.post {
+                            dlg.dismiss()
+                            window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                            rebuildPreview()
+                            if (uri == null) toast("Export finished but saving to the gallery failed") else doneDialog(uri)
+                        }
                     }
-                }
-            },
-            onError = { msg ->
-                exporter = null
-                dlg.dismiss()
-                out.delete()
-                window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-                rebuildPreview()
-                MaterialAlertDialogBuilder(this)
-                    .setTitle("Export failed")
-                    .setMessage(msg)
-                    .setPositiveButton("OK", null)
-                    .show()
-            }
-        )
+                },
+                onError = { msg -> exportFailed(dlg, out, msg) }
+            )
+        } catch (e: Exception) {
+            exportFailed(dlg, out, e.message ?: e.toString())
+            return
+        }
         ui.post(poll)
+    }
+
+    private fun exportFailed(dlg: androidx.appcompat.app.AlertDialog, out: File, msg: String) {
+        exporter = null
+        dlg.dismiss()
+        out.delete()
+        window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        rebuildPreview()
+        MaterialAlertDialogBuilder(this)
+            .setTitle("Export failed")
+            .setMessage(msg)
+            .setPositiveButton("OK", null)
+            .show()
     }
 
     private fun doneDialog(uri: Uri) {

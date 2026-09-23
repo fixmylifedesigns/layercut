@@ -22,6 +22,7 @@ class OverlayEditView(ctx: Context) : View(ctx) {
         fun onSelect(id: String?)
         fun onEditBegin()
         fun onEdited()
+        fun onLiveChange() {}
     }
 
     var project: Project? = null
@@ -80,6 +81,7 @@ class OverlayEditView(ctx: Context) : View(ctx) {
             val c = target ?: return false
             c.widthFrac = (c.widthFrac * detector.scaleFactor).coerceIn(0.05f, 2f)
             edited = true
+            listener?.onLiveChange()
             invalidate()
             return true
         }
@@ -135,6 +137,7 @@ class OverlayEditView(ctx: Context) : View(ctx) {
                     }
                     Mode.NONE -> {}
                 }
+                if (edited) listener?.onLiveChange()
                 invalidate()
             }
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
