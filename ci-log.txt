@@ -1,0 +1,99 @@
+## errors
+e: file:///home/runner/work/layercut/layercut/app/src/main/java/com/fixmylife/layercut/HomeActivity.kt:132:36 Unresolved reference 'EXTRA_ID'.
+e: file:///home/runner/work/layercut/layercut/app/src/main/java/com/fixmylife/layercut/HomeActivity.kt:133:36 Unresolved reference 'EXTRA_AUTOPICK'.
+e: file:///home/runner/work/layercut/layercut/app/src/main/java/com/fixmylife/layercut/HomeActivity.kt:170:22 Unresolved reference 'name'.
+e: file:///home/runner/work/layercut/layercut/app/src/main/java/com/fixmylife/layercut/HomeActivity.kt:213:36 Unresolved reference 'name'.
+e: file:///home/runner/work/layercut/layercut/app/src/main/java/com/fixmylife/layercut/HomeActivity.kt:214:14 Unresolved reference 'setItems'.
+e: file:///home/runner/work/layercut/layercut/app/src/main/java/com/fixmylife/layercut/HomeActivity.kt:214:67 Cannot infer type for this parameter. Please specify it explicitly.
+e: file:///home/runner/work/layercut/layercut/app/src/main/java/com/fixmylife/layercut/HomeActivity.kt:214:70 Cannot infer type for this parameter. Please specify it explicitly.
+e: file:///home/runner/work/layercut/layercut/app/src/main/java/com/fixmylife/layercut/HomeActivity.kt:217:81 Unresolved reference 'name'.
+e: file:///home/runner/work/layercut/layercut/app/src/main/java/com/fixmylife/layercut/HomeActivity.kt:231:60 Unresolved reference 'name'.
+e: file:///home/runner/work/layercut/layercut/app/src/main/java/com/fixmylife/layercut/ProjectStore.kt:26:19 Unresolved reference 'name'.
+e: file:///home/runner/work/layercut/layercut/app/src/main/java/com/fixmylife/layercut/ProjectStore.kt:26:35 Unresolved reference 'DEFAULT_NAME'.
+e: file:///home/runner/work/layercut/layercut/app/src/main/java/com/fixmylife/layercut/ProjectStore.kt:26:51 Unresolved reference 'name'.
+e: file:///home/runner/work/layercut/layercut/app/src/main/java/com/fixmylife/layercut/ProjectStore.kt:37:11 Unresolved reference 'name'.
+e: file:///home/runner/work/layercut/layercut/app/src/main/java/com/fixmylife/layercut/ProjectStore.kt:72:11 Unresolved reference 'name'.
+e: file:///home/runner/work/layercut/layercut/app/src/main/java/com/fixmylife/layercut/ProjectStore.kt:72:20 Unresolved reference 'name'.
+e: file:///home/runner/work/layercut/layercut/app/src/main/java/com/fixmylife/layercut/ProjectStore.kt:79:11 Unresolved reference 'name'.
+gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/__run_2-1790243104527.json
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':app:compileDebugKotlin'.
+> A failure occurred while executing org.jetbrains.kotlin.compilerRunner.GradleCompilerRunnerWithWorkers$GradleKotlinCompilerWorkAction
+   > Compilation error. See log for more details
+
+
+## tail
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.9/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preDebugBuild UP-TO-DATE
+> Task :app:mergeDebugNativeDebugMetadata NO-SOURCE
+> Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :app:generateDebugBuildConfig
+> Task :app:generateDebugResValues
+> Task :app:checkDebugAarMetadata
+> Task :app:mapDebugSourceSetPaths
+> Task :app:generateDebugResources
+> Task :app:packageDebugResources
+> Task :app:createDebugCompatibleScreenManifests
+> Task :app:extractDeepLinksDebug
+> Task :app:parseDebugLocalResources
+> Task :app:processDebugMainManifest
+> Task :app:processDebugManifest
+> Task :app:processDebugManifestForPackage
+> Task :app:javaPreCompileDebug
+> Task :app:mergeDebugShaders
+> Task :app:compileDebugShaders NO-SOURCE
+> Task :app:generateDebugAssets UP-TO-DATE
+> Task :app:mergeDebugResources
+> Task :app:mergeDebugAssets
+> Task :app:desugarDebugFileDependencies
+> Task :app:compressDebugAssets
+> Task :app:mergeDebugJniLibFolders
+> Task :app:checkDebugDuplicateClasses
+> Task :app:mergeDebugNativeLibs NO-SOURCE
+> Task :app:stripDebugDebugSymbols NO-SOURCE
+> Task :app:validateSigningDebug
+> Task :app:writeDebugAppMetadata
+> Task :app:mergeLibDexDebug
+> Task :app:writeDebugSigningConfigVersions
+> Task :app:processDebugResources
+> Task :app:mergeExtDexDebug
+
+> Task :app:compileDebugKotlin FAILED
+e: file:///home/runner/work/layercut/layercut/app/src/main/java/com/fixmylife/layercut/HomeActivity.kt:132:36 Unresolved reference 'EXTRA_ID'.
+e: file:///home/runner/work/layercut/layercut/app/src/main/java/com/fixmylife/layercut/HomeActivity.kt:133:36 Unresolved reference 'EXTRA_AUTOPICK'.
+e: file:///home/runner/work/layercut/layercut/app/src/main/java/com/fixmylife/layercut/HomeActivity.kt:170:22 Unresolved reference 'name'.
+e: file:///home/runner/work/layercut/layercut/app/src/main/java/com/fixmylife/layercut/HomeActivity.kt:213:36 Unresolved reference 'name'.
+e: file:///home/runner/work/layercut/layercut/app/src/main/java/com/fixmylife/layercut/HomeActivity.kt:214:14 Unresolved reference 'setItems'.
+e: file:///home/runner/work/layercut/layercut/app/src/main/java/com/fixmylife/layercut/HomeActivity.kt:214:67 Cannot infer type for this parameter. Please specify it explicitly.
+e: file:///home/runner/work/layercut/layercut/app/src/main/java/com/fixmylife/layercut/HomeActivity.kt:214:70 Cannot infer type for this parameter. Please specify it explicitly.
+e: file:///home/runner/work/layercut/layercut/app/src/main/java/com/fixmylife/layercut/HomeActivity.kt:217:81 Unresolved reference 'name'.
+e: file:///home/runner/work/layercut/layercut/app/src/main/java/com/fixmylife/layercut/HomeActivity.kt:231:60 Unresolved reference 'name'.
+e: file:///home/runner/work/layercut/layercut/app/src/main/java/com/fixmylife/layercut/ProjectStore.kt:26:19 Unresolved reference 'name'.
+e: file:///home/runner/work/layercut/layercut/app/src/main/java/com/fixmylife/layercut/ProjectStore.kt:26:35 Unresolved reference 'DEFAULT_NAME'.
+e: file:///home/runner/work/layercut/layercut/app/src/main/java/com/fixmylife/layercut/ProjectStore.kt:26:51 Unresolved reference 'name'.
+e: file:///home/runner/work/layercut/layercut/app/src/main/java/com/fixmylife/layercut/ProjectStore.kt:37:11 Unresolved reference 'name'.
+e: file:///home/runner/work/layercut/layercut/app/src/main/java/com/fixmylife/layercut/ProjectStore.kt:72:11 Unresolved reference 'name'.
+e: file:///home/runner/work/layercut/layercut/app/src/main/java/com/fixmylife/layercut/ProjectStore.kt:72:20 Unresolved reference 'name'.
+e: file:///home/runner/work/layercut/layercut/app/src/main/java/com/fixmylife/layercut/ProjectStore.kt:79:11 Unresolved reference 'name'.
+gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/__run_2-1790243104527.json
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':app:compileDebugKotlin'.
+> A failure occurred while executing org.jetbrains.kotlin.compilerRunner.GradleCompilerRunnerWithWorkers$GradleKotlinCompilerWorkAction
+   > Compilation error. See log for more details
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights.
+> Get more help at https://help.gradle.org.
+
+BUILD FAILED in 35s
+27 actionable tasks: 27 executed
