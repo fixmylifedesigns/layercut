@@ -704,7 +704,7 @@ class MainActivity : AppCompatActivity(), TimelineView.Listener, OverlayEditView
 
     private fun moreMenu() {
         MaterialAlertDialogBuilder(this)
-            .setTitle("LayerCut \u00B7 build ${Updater.currentBuild()}")
+            .setTitle("FixMyCut \u00B7 build ${Updater.currentBuild()}")
             .setItems(arrayOf("Rename project", "Check for updates", "Tips")) { _, which ->
                 when (which) {
                     0 -> renameDialog()
@@ -824,7 +824,7 @@ class MainActivity : AppCompatActivity(), TimelineView.Listener, OverlayEditView
     private fun doneDialog(uri: Uri) {
         MaterialAlertDialogBuilder(this)
             .setTitle("Saved")
-            .setMessage("Your video is in Movies/LayerCut.")
+            .setMessage("Your video is in Movies/FixMyCut.")
             .setPositiveButton("Share") { _, _ ->
                 val send = Intent(Intent.ACTION_SEND).apply {
                     type = "video/mp4"
