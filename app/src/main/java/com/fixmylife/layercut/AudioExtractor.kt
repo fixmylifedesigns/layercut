@@ -26,7 +26,7 @@ import com.google.android.material.progressindicator.LinearProgressIndicator
 import java.io.File
 import java.io.IOException
 
-/** Pulls the audio track out of a video and saves it as an .m4a in Music/LayerCut. */
+/** Pulls the audio track out of a video and saves it as an .m4a in Music/FixMyCut. */
 object AudioExtractor {
 
     fun runWithUi(
@@ -104,7 +104,7 @@ object AudioExtractor {
     private fun doneDialog(act: AppCompatActivity, uri: Uri) {
         MaterialAlertDialogBuilder(act)
             .setTitle("Audio saved")
-            .setMessage("Saved to Music/LayerCut.")
+            .setMessage("Saved to Music/FixMyCut.")
             .setPositiveButton("Share") { _, _ ->
                 val send = Intent(Intent.ACTION_SEND).apply {
                     type = "audio/mp4"
@@ -122,7 +122,7 @@ object AudioExtractor {
         val values = ContentValues().apply {
             put(MediaStore.Audio.Media.DISPLAY_NAME, file.name)
             put(MediaStore.Audio.Media.MIME_TYPE, "audio/mp4")
-            put(MediaStore.Audio.Media.RELATIVE_PATH, Environment.DIRECTORY_MUSIC + "/LayerCut")
+            put(MediaStore.Audio.Media.RELATIVE_PATH, Environment.DIRECTORY_MUSIC + "/FixMyCut")
             put(MediaStore.Audio.Media.IS_PENDING, 1)
         }
         val collection = MediaStore.Audio.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)

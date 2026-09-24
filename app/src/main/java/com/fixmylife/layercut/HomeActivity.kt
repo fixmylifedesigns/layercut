@@ -45,7 +45,7 @@ class HomeActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         ProjectStore.migrate(this)
         buildUi()
-        if (savedInstanceState == null) Updater.check(this, silent = true)
+        if (savedInstanceState == null) Updater.autoUpdate(this)
     }
 
     override fun onResume() {
@@ -71,7 +71,7 @@ class HomeActivity : AppCompatActivity() {
 
         val header = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
         header.addView(TextView(this).apply {
-            text = "LayerCut"; textSize = 28f; setTypeface(null, Typeface.BOLD); setTextColor(Color.WHITE)
+            text = "FixMyCut"; textSize = 28f; setTypeface(null, Typeface.BOLD); setTextColor(Color.WHITE)
         }, LinearLayout.LayoutParams(0, wrap, 1f))
         header.addView(TextView(this).apply {
             text = "build ${Updater.currentBuild()}"
