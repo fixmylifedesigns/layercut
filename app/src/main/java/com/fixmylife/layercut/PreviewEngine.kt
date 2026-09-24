@@ -13,7 +13,10 @@ import android.view.TextureView
 import android.view.View
 import android.widget.FrameLayout
 import android.widget.ImageView
+import androidx.media3.common.C
 import androidx.media3.common.MediaItem
+import androidx.media3.common.PlaybackException
+import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import java.util.concurrent.Executors
 import kotlin.math.abs
@@ -30,6 +33,9 @@ class PreviewEngine(private val ctx: Context, private val canvas: FrameLayout) {
     var project: Project? = null
     var onTime: ((Long) -> Unit)? = null
     var onPlayingChanged: ((Boolean) -> Unit)? = null
+
+    /** Diagnostic text for the preview (null = all good). */
+    var onStatus: ((String?) -> Unit)? = null
 
     var timeMs = 0L
         private set
@@ -52,6 +58,8 @@ class PreviewEngine(private val ctx: Context, private val canvas: FrameLayout) {
             if (r - l != orr - ol || b - t != ob - ot) ui.post { update() }
         }
     }
+
+    private fun status(s: String?) = onStatus?.invoke(s)
 
     private inner class Track {
         val container = FrameLayout(ctx).apply { clipChildren = true }
@@ -78,15 +86,26 @@ class PreviewEngine(private val ctx: Context, private val canvas: FrameLayout) {
             }
             val p = player ?: ExoPlayer.Builder(ctx).build().also {
                 it.setVideoTextureView(texture)
+                it.addListener(object : Player.Listener {
+                    override fun onPlayerError(error: PlaybackException) {
+                        status("Preview can't play a clip: ${error.errorCodeName}\n${error.cause?.message ?: error.message ?: ""}")
+                    }
+
+                    override fun onRenderedFirstFrame() {
+                        status(null)
+                    }
+                })
                 player = it
+                status("Loading video\u2026")
             }
             p.setMediaItems(clips.map { c ->
+                val end = if (c.trimEndMs >= c.sourceDurationMs - 50) C.TIME_END_OF_SOURCE else c.trimEndMs
                 MediaItem.Builder()
                     .setUri(Uri.parse(c.uri))
                     .setClippingConfiguration(
                         MediaItem.ClippingConfiguration.Builder()
                             .setStartPositionMs(c.trimStartMs)
-                            .setEndPositionMs(c.trimEndMs.coerceAtMost(c.sourceDurationMs))
+                            .setEndPositionMs(end)
                             .build()
                     )
                     .build()

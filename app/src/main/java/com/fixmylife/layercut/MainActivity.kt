@@ -14,6 +14,7 @@ import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
 import android.view.WindowManager
+import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.HorizontalScrollView
 import android.widget.LinearLayout
@@ -29,15 +30,21 @@ import com.google.android.material.materialswitch.MaterialSwitch
 import com.google.android.material.progressindicator.LinearProgressIndicator
 import com.google.android.material.slider.RangeSlider
 import com.google.android.material.slider.Slider
-import org.json.JSONObject
 import java.io.File
 import java.util.Collections
 import java.util.concurrent.Executors
 import kotlin.math.roundToInt
 
+/** The editor. Opened from [HomeActivity] with a project id. */
 class MainActivity : AppCompatActivity(), TimelineView.Listener, OverlayEditView.Listener {
 
+    companion object {
+        const val EXTRA_ID = "projectId"
+        const val EXTRA_AUTOPICK = "autoPick"
+    }
+
     private val project = Project()
+    private lateinit var projectId: String
     private val io = Executors.newSingleThreadExecutor()
     private val ui = Handler(Looper.getMainLooper())
     private lateinit var engine: PreviewEngine
@@ -49,7 +56,9 @@ class MainActivity : AppCompatActivity(), TimelineView.Listener, OverlayEditView
     private lateinit var playBtn: TextView
     private lateinit var toolRow: LinearLayout
     private lateinit var aspectBtn: TextView
+    private lateinit var titleView: TextView
     private lateinit var emptyHint: TextView
+    private lateinit var statusText: TextView
     private var selectedId: String? = null
     private var positionMs = 0L
     private val undo = ArrayDeque<String>()
@@ -69,6 +78,7 @@ class MainActivity : AppCompatActivity(), TimelineView.Listener, OverlayEditView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        projectId = intent.getStringExtra(EXTRA_ID) ?: ProjectStore.create(this)
         loadProject()
         buildUi()
         engine = PreviewEngine(this, canvasView).also { e ->
@@ -80,9 +90,16 @@ class MainActivity : AppCompatActivity(), TimelineView.Listener, OverlayEditView
             e.onPlayingChanged = { playing ->
                 playBtn.text = if (playing) "\u275A\u275A" else "\u25B6"
             }
+            e.onStatus = { s ->
+                statusText.text = s ?: ""
+                statusText.visibility = if (s == null) View.GONE else View.VISIBLE
+            }
         }
         refreshAll()
         rebuildPreview()
+        if (savedInstanceState == null && intent.getBooleanExtra(EXTRA_AUTOPICK, false) && project.totalDurationMs() == 0L) {
+            pick(false)
+        }
     }
 
     override fun onStop() {
@@ -141,11 +158,16 @@ class MainActivity : AppCompatActivity(), TimelineView.Listener, OverlayEditView
         val top = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(12), dp(6), dp(8), dp(6))
+            setPadding(dp(2), dp(6), dp(8), dp(6))
         }
-        top.addView(TextView(this).apply {
-            text = "LayerCut"; textSize = 18f; setTypeface(null, Typeface.BOLD); setTextColor(Color.WHITE)
-        }, LinearLayout.LayoutParams(0, wrap, 1f))
+        top.addView(smallBtn("\u2039") { finish() }.apply { textSize = 26f })
+        titleView = TextView(this).apply {
+            textSize = 16f; setTypeface(null, Typeface.BOLD); setTextColor(Color.WHITE)
+            maxLines = 1
+            ellipsize = android.text.TextUtils.TruncateAt.END
+            setOnClickListener { renameDialog() }
+        }
+        top.addView(titleView, LinearLayout.LayoutParams(0, wrap, 1f))
         top.addView(smallBtn("\u21B6") { doUndo() })
         top.addView(smallBtn("\u21B7") { doRedo() })
         aspectBtn = smallBtn(project.aspect) { chooseAspect() }
@@ -171,6 +193,15 @@ class MainActivity : AppCompatActivity(), TimelineView.Listener, OverlayEditView
             gravity = Gravity.CENTER
         }
         previewBox.addView(emptyHint, FrameLayout.LayoutParams(match, match))
+        statusText = TextView(this).apply {
+            setTextColor(Color.WHITE)
+            textSize = 12f
+            setBackgroundColor(Color.parseColor("#CC202329"))
+            setPadding(dp(10), dp(6), dp(10), dp(6))
+            visibility = View.GONE
+        }
+        previewBox.addView(statusText, FrameLayout.LayoutParams(wrap, wrap, Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL)
+            .apply { bottomMargin = dp(8); leftMargin = dp(8); rightMargin = dp(8) })
         root.addView(previewBox, LinearLayout.LayoutParams(match, 0, 1f))
 
         val transport = LinearLayout(this).apply {
@@ -214,7 +245,10 @@ class MainActivity : AppCompatActivity(), TimelineView.Listener, OverlayEditView
         }
         val ov = project.isOverlay(c.id)
         toolRow.addView(toolBtn("\u2715", "Done") { select(null) })
-        if (!c.isImage) toolRow.addView(toolBtn("\uD83D\uDD0A", "Volume") { volumeDialog(c) })
+        if (!c.isImage) {
+            toolRow.addView(toolBtn("\uD83D\uDD0A", "Volume") { volumeDialog(c) })
+            toolRow.addView(toolBtn("\u266B", "Extract audio") { extractAudio(c) })
+        }
         toolRow.addView(toolBtn("\u2702", "Crop") { cropDialog(c) })
         toolRow.addView(toolBtn("\u23F1", if (c.isImage) "Duration" else "Trim") { trimDialog(c) })
         toolRow.addView(toolBtn("\u2AFD", "Split") { split(c) })
@@ -238,6 +272,7 @@ class MainActivity : AppCompatActivity(), TimelineView.Listener, OverlayEditView
         if (project.find(selectedId) == null) selectedId = null
         timeline.selectedId = selectedId
         overlayView.selectedId = if (project.isOverlay(selectedId)) selectedId else null
+        titleView.text = project.name
         aspectBtn.text = project.aspect
         previewFrame.aspect = project.aspectRatio()
         val total = project.totalDurationMs()
@@ -281,17 +316,12 @@ class MainActivity : AppCompatActivity(), TimelineView.Listener, OverlayEditView
 
     // ------------------------------------------------------------ state
 
-    private fun projectFile() = File(filesDir, "project.json")
-
     private fun saveProject() {
-        try { projectFile().writeText(project.toJson().toString()) } catch (_: Exception) {}
+        try { ProjectStore.save(this, projectId, project) } catch (_: Exception) {}
     }
 
     private fun loadProject() {
-        try {
-            val f = projectFile()
-            if (f.exists()) project.loadFrom(JSONObject(f.readText()))
-        } catch (_: Exception) {}
+        ProjectStore.loadInto(this, projectId, project)
     }
 
     private fun snapshot() {
@@ -315,14 +345,14 @@ class MainActivity : AppCompatActivity(), TimelineView.Listener, OverlayEditView
     private fun doUndo() {
         if (undo.isEmpty()) { toast("Nothing to undo"); return }
         redo.addLast(project.toJson().toString())
-        project.loadFrom(JSONObject(undo.removeLast()))
+        project.loadFrom(org.json.JSONObject(undo.removeLast()))
         commit()
     }
 
     private fun doRedo() {
         if (redo.isEmpty()) { toast("Nothing to redo"); return }
         undo.addLast(project.toJson().toString())
-        project.loadFrom(JSONObject(redo.removeLast()))
+        project.loadFrom(org.json.JSONObject(redo.removeLast()))
         commit()
     }
 
@@ -500,11 +530,40 @@ class MainActivity : AppCompatActivity(), TimelineView.Listener, OverlayEditView
         commit()
     }
 
+    private fun extractAudio(c: Clip) {
+        if (!c.hasAudio) { toast("This clip has no audio track"); return }
+        MaterialAlertDialogBuilder(this)
+            .setTitle("Extract audio")
+            .setItems(arrayOf("Save audio file", "Save audio file and mute this clip")) { _, which ->
+                val end = if (c.trimEndMs >= c.sourceDurationMs - 50) null else c.trimEndMs
+                engine.pause()
+                AudioExtractor.runWithUi(this, Uri.parse(c.uri), c.trimStartMs, end, project.name + "_audio") { ok ->
+                    if (ok && which == 1) edit { c.muted = true }
+                }
+            }
+            .show()
+    }
+
     // ------------------------------------------------------------ dialogs
 
     private fun dialogBox(): LinearLayout = LinearLayout(this).apply {
         orientation = LinearLayout.VERTICAL
         setPadding(dp(24), dp(12), dp(24), dp(4))
+    }
+
+    private fun renameDialog() {
+        val box = dialogBox()
+        val input = EditText(this).apply { setText(project.name); setSelection(text.length) }
+        box.addView(input)
+        MaterialAlertDialogBuilder(this)
+            .setTitle("Rename project")
+            .setView(box)
+            .setPositiveButton("Save") { _, _ ->
+                val n = input.text.toString().trim()
+                if (n.isNotEmpty()) edit { project.name = n }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 
     private fun volumeDialog(c: Clip) {
@@ -645,18 +704,12 @@ class MainActivity : AppCompatActivity(), TimelineView.Listener, OverlayEditView
 
     private fun moreMenu() {
         MaterialAlertDialogBuilder(this)
-            .setItems(arrayOf("New project", "Tips")) { _, which ->
-                if (which == 0) {
-                    MaterialAlertDialogBuilder(this)
-                        .setTitle("Start a new project?")
-                        .setMessage("You can still undo this.")
-                        .setPositiveButton("New") { _, _ ->
-                            edit { project.main.clear(); project.overlays.clear(); selectedId = null; positionMs = 0L }
-                        }
-                        .setNegativeButton("Cancel", null)
-                        .show()
-                } else {
-                    MaterialAlertDialogBuilder(this)
+            .setTitle("LayerCut \u00B7 build ${Updater.currentBuild()}")
+            .setItems(arrayOf("Rename project", "Check for updates", "Tips")) { _, which ->
+                when (which) {
+                    0 -> renameDialog()
+                    1 -> Updater.check(this, silent = false)
+                    else -> MaterialAlertDialogBuilder(this)
                         .setTitle("Tips")
                         .setMessage(
                             "\u2022 Drag the timeline to scrub, pinch it to zoom.\n" +
@@ -692,7 +745,8 @@ class MainActivity : AppCompatActivity(), TimelineView.Listener, OverlayEditView
         val (w, h) = project.canvasSize(shortSide)
         val comp = try { CompositionFactory.build(project, w, h) } catch (e: Exception) { null }
         if (comp == null) { toast("Nothing to export"); rebuildPreview(); return }
-        val out = File(cacheDir, "LayerCut_${System.currentTimeMillis()}.mp4")
+        val safeName = project.name.replace(Regex("[^A-Za-z0-9_-]"), "_").take(40)
+        val out = File(cacheDir, "${safeName}_${System.currentTimeMillis()}.mp4")
         val bitrate = if (shortSide >= 2160) 45_000_000 else 16_000_000
 
         val box = dialogBox()

@@ -91,6 +91,7 @@ class Clip(
 }
 
 class Project {
+    var name: String = DEFAULT_NAME
     var aspect: String = "9:16"
     val main: MutableList<Clip> = mutableListOf()
 
@@ -143,12 +144,14 @@ class Project {
     }
 
     fun toJson(): JSONObject = JSONObject().apply {
+        put("name", name)
         put("aspect", aspect)
         put("main", JSONArray().apply { main.forEach { put(it.toJson()) } })
         put("overlays", JSONArray().apply { overlays.forEach { put(it.toJson()) } })
     }
 
     fun loadFrom(o: JSONObject) {
+        name = o.optString("name", DEFAULT_NAME)
         aspect = o.optString("aspect", "9:16")
         main.clear(); overlays.clear()
         o.optJSONArray("main")?.let { a -> for (i in 0 until a.length()) main.add(Clip.fromJson(a.getJSONObject(i))) }
@@ -156,6 +159,7 @@ class Project {
     }
 
     companion object {
+        const val DEFAULT_NAME = "Untitled"
         fun even(v: Int): Int = maxOf(2, v - (v % 2))
     }
 }
