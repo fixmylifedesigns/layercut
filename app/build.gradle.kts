@@ -3,6 +3,9 @@ plugins {
     id("org.jetbrains.kotlin.android")
 }
 
+// Each GitHub Actions run gets a higher build number, which the in-app updater compares.
+val ciBuild = (System.getenv("GITHUB_RUN_NUMBER") ?: "1").toInt()
+
 android {
     namespace = "com.fixmylife.layercut"
     compileSdk = 35
@@ -11,9 +14,10 @@ android {
         applicationId = "com.fixmylife.layercut"
         minSdk = 29
         targetSdk = 34
-        versionCode = 1
-        versionName = "0.1"
+        versionCode = ciBuild
+        versionName = "0.2.$ciBuild"
     }
+    buildFeatures { buildConfig = true }
     signingConfigs {
         getByName("debug") {
             storeFile = file("debug.keystore")
