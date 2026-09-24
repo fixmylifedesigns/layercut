@@ -33,6 +33,22 @@ jobs:
             git commit -m "Add signing key [skip ci]"
             git push || true
           fi
+      - name: App icon (downloaded once from Higgsfield, then kept in the repo)
+        shell: bash
+        run: |
+          ICON=app/src/main/res/drawable-nodpi/ic_launcher_art.png
+          if [ ! -f "$ICON" ]; then
+            mkdir -p "$(dirname "$ICON")"
+            curl -fsSL -o "$ICON" "$(tr -d '[:space:]' < branding/icon-url.txt)"
+            file "$ICON"
+            file "$ICON" | grep -q "PNG image" || { echo "Downloaded icon is not a PNG"; exit 1; }
+            git config user.name "ci"
+            git config user.email "ci@users.noreply.github.com"
+            git add "$ICON"
+            git commit -m "Add Higgsfield app icon [skip ci]"
+            git pull --rebase origin main || true
+            git push || true
+          fi
       - name: Build
         shell: bash
         run: |
@@ -51,13 +67,13 @@ jobs:
           git add -f ci-log.txt
           git commit -m "CI log for ${GITHUB_SHA}"
           git push -f origin ci-logs
-      - run: cp app/build/outputs/apk/debug/app-debug.apk LayerCut.apk
+      - run: cp app/build/outputs/apk/debug/app-debug.apk FixMyCut.apk
       - uses: actions/upload-artifact@v4
         with:
-          name: LayerCut-apk
-          path: LayerCut.apk
+          name: FixMyCut-apk
+          path: FixMyCut.apk
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: build-${{ github.run_number }}
-          name: Build ${{ github.run_number }}
-          files: LayerCut.apk
+          name: FixMyCut build ${{ github.run_number }}
+          files: FixMyCut.apk

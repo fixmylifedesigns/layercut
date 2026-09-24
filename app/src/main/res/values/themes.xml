@@ -1,5 +1,5 @@
 <resources>
-    <style name="Theme.LayerCut" parent="Theme.Material3.Dark.NoActionBar">
+    <style name="Theme.FixMyCut" parent="Theme.Material3.Dark.NoActionBar">
         <item name="colorPrimary">#FF2BD4C0</item>
         <item name="colorOnPrimary">#FF00201D</item>
         <item name="colorSecondary">#FF9C7CFF</item>

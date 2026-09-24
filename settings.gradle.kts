@@ -12,5 +12,5 @@ dependencyResolutionManagement {
         mavenCentral()
     }
 }
-rootProject.name = "LayerCut"
+rootProject.name = "FixMyCut"
 include(":app")
